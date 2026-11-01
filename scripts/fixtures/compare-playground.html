@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Better Playwright Compare Playground</title>
+    <style>
+      body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin: 0; background: #f5f7fb; color: #1f2937; }
+      .page { max-width: 980px; margin: 0 auto; padding: 24px; }
+      .card { background: #fff; border-radius: 16px; padding: 20px; margin-bottom: 20px; box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08); }
+      .field, .el-field { margin-bottom: 16px; }
+      .label { display: block; font-weight: 600; margin-bottom: 8px; }
+      input, textarea, button { font: inherit; }
+      .uni-input-input, .uni-textarea-textarea, .picker-row, .el-select, .el-date-editor input { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; }
+      uni-button button, .primary { width: 100%; border: 0; border-radius: 12px; padding: 12px 16px; background: linear-gradient(135deg, #2563eb, #1d4ed8); color: #fff; cursor: pointer; }
+      .status { margin-top: 12px; min-height: 24px; font-weight: 600; color: #047857; }
+      .picker-dialog, .el-select-dropdown, .el-tree-panel { display: none; margin-top: 8px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; padding: 8px; }
+      .picker-dialog.open, .el-select-dropdown.open, .el-tree-panel.open { display: block; }
+      .uni-picker-view-content { max-height: 180px; overflow: auto; border: 1px solid #e2e8f0; border-radius: 10px; padding: 8px; }
+      .uni-picker-item, .el-select-dropdown__item, .el-tree-node__content { padding: 10px 12px; border-radius: 8px; cursor: pointer; }
+      .uni-picker-item:hover, .el-select-dropdown__item:hover, .el-tree-node__content:hover { background: #eff6ff; }
+      .picker-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+      .picker-actions button { border: 1px solid #cbd5e1; background: #fff; border-radius: 8px; padding: 8px 12px; cursor: pointer; }
+      .picker-actions .confirm { background: #2563eb; color: #fff; border-color: #2563eb; }
+      .value-preview { font-size: 13px; color: #64748b; margin-top: 6px; }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <div class="card">
+        <h1>Complex Controls</h1>
+        <p>Compare stability, available capabilities, and execution time for complex controls.</p>
+      </div>
+
+      <div class="card" id="uni-login-card">
+        <h2>Uni-app Login</h2>
+        <div class="field">
+          <label class="label">Account</label>
+          <input class="uni-input-input" type="text" data-testid="login-account" />
+        </div>
+        <div class="field">
+          <label class="label">Password</label>
+          <input class="uni-input-input" type="password" data-testid="login-password" />
+        </div>
+        <div class="field">
+          <label class="label">Note</label>
+          <textarea class="uni-textarea-textarea" data-testid="login-remark"></textarea>
+        </div>
+        <uni-button id="uni-login-button"><button type="button">Log in</button></uni-button>
+        <div class="status" id="login-status">Not logged in</div>
+      </div>
+
+      <div class="card" id="picker-card">
+        <h2>Uni Picker Field</h2>
+        <div class="field" id="biz-type-field">
+          <div class="label">Business type</div>
+          <div class="picker-row" role="button" tabindex="0">Select business type</div>
+          <div class="value-preview" id="biz-type-preview">Current value: None</div>
+        </div>
+        <div class="picker-dialog" id="biz-type-dialog">
+          <div class="uni-picker-view-content">
+            <div class="uni-picker-item">Medical device company</div>
+            <div class="uni-picker-item">Online hospital</div>
+            <div class="uni-picker-item">Pharmacy chain</div>
+          </div>
+          <div class="picker-actions">
+            <button type="button" class="cancel">Cancel</button>
+            <button type="button" class="confirm">Confirm</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" id="element-card">
+        <h2>Element Plus Controls</h2>
+        <div class="el-field">
+          <div class="label">Region</div>
+          <div class="el-select" id="region-select" tabindex="0">Select region</div>
+          <div class="el-select-dropdown" id="region-dropdown">
+            <div class="el-select-dropdown__item">East</div>
+            <div class="el-select-dropdown__item">North</div>
+            <div class="el-select-dropdown__item">Southwest</div>
+          </div>
+        </div>
+        <div class="el-field">
+          <div class="label">Team</div>
+          <div class="el-tree-select" id="team-select" tabindex="0">Select team</div>
+          <div class="el-tree-panel" id="team-panel">
+            <div class="el-tree-node__content">Sales team 1</div>
+            <div class="el-tree-node__content">Sales team 2</div>
+          </div>
+        </div>
+        <div class="el-field">
+          <div class="label">Effective date</div>
+          <div class="el-date-editor"><input id="date-input" type="text" placeholder="YYYY-MM-DD" /></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <button class="primary" id="final-submit" type="button">Submit</button>
+        <div class="status" id="submit-status">Not submitted</div>
+      </div>
+    </div>
+
+    <script>
+      (() => {
+        const state = {
+          pickerValue: '',
+          region: '',
+          team: '',
+        };
+
+        const loginStatus = document.getElementById('login-status');
+        const submitStatus = document.getElementById('submit-status');
+        const pickerDialog = document.getElementById('biz-type-dialog');
+        const pickerRow = document.querySelector('#biz-type-field .picker-row');
+        const pickerPreview = document.getElementById('biz-type-preview');
+        const regionSelect = document.getElementById('region-select');
+        const regionDropdown = document.getElementById('region-dropdown');
+        const teamSelect = document.getElementById('team-select');
+        const teamPanel = document.getElementById('team-panel');
+        const dateInput = document.getElementById('date-input');
+
+        let pickerPendingValue = '';
+
+        pickerRow.addEventListener('click', () => {
+          pickerDialog.classList.add('open');
+        });
+
+        document.querySelector('#biz-type-dialog .cancel').addEventListener('click', () => {
+          pickerDialog.classList.remove('open');
+          pickerPendingValue = '';
+        });
+
+        document.querySelectorAll('#biz-type-dialog .uni-picker-item').forEach(item => {
+          item.addEventListener('click', () => {
+            pickerPendingValue = item.textContent.trim();
+          });
+        });
+
+        document.querySelector('#biz-type-dialog .confirm').addEventListener('click', () => {
+          if (pickerPendingValue) {
+            state.pickerValue = pickerPendingValue;
+            pickerRow.textContent = pickerPendingValue;
+            pickerPreview.textContent = `Current value: ${pickerPendingValue}`;
+          }
+          pickerDialog.classList.remove('open');
+        });
+
+        regionSelect.addEventListener('click', () => {
+          regionDropdown.classList.toggle('open');
+        });
+        document.querySelectorAll('#region-dropdown .el-select-dropdown__item').forEach(item => {
+          item.addEventListener('click', () => {
+            state.region = item.textContent.trim();
+            regionSelect.textContent = state.region;
+            regionDropdown.classList.remove('open');
+          });
+        });
+
+        teamSelect.addEventListener('click', () => {
+          teamPanel.classList.toggle('open');
+        });
+        document.querySelectorAll('#team-panel .el-tree-node__content').forEach(item => {
+          item.addEventListener('click', () => {
+            state.team = item.textContent.trim();
+            teamSelect.textContent = state.team;
+            teamPanel.classList.remove('open');
+          });
+        });
+
+        document.querySelector('#uni-login-button button').addEventListener('click', async () => {
+          const account = document.querySelector('[data-testid="login-account"]').value;
+          const password = document.querySelector('[data-testid="login-password"]').value;
+          loginStatus.textContent = 'Logging in';
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ account, password }),
+          });
+          const data = await response.json();
+          loginStatus.textContent = data.message;
+          window.__compareLastLogin = data;
+        });
+
+        document.getElementById('final-submit').addEventListener('click', async () => {
+          submitStatus.textContent = 'Submitting';
+          const payload = {
+            account: document.querySelector('[data-testid="login-account"]').value,
+            password: document.querySelector('[data-testid="login-password"]').value,
+            remark: document.querySelector('[data-testid="login-remark"]').value,
+            pickerValue: state.pickerValue,
+            region: state.region,
+            team: state.team,
+            date: dateInput.value,
+          };
+          const response = await fetch('/api/submit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          const data = await response.json();
+          submitStatus.textContent = data.message;
+          window.__compareLastSubmit = data;
+        });
+      })();
+    </script>
+  </body>
+</html>
